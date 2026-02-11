@@ -3,6 +3,7 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 
 public class Program
 {
@@ -21,19 +22,28 @@ public class Refresher()
     {
         await LoadTokenJson();
 
-        if(tokens != null)
+        if (!await DeezerRefresh())
+        {
+            Console.WriteLine("something went wrong. couldnt update the tooken.");
+        }
+
+        /*
+        if (tokens != null)
         {
             if (tokens.ExpireDate_Deezer.HasValue == true && DateTimeOffset.FromUnixTimeSeconds((long)tokens.ExpireDate_Deezer.Value) < DateTimeOffset.UtcNow)
             {
                 Console.WriteLine(DateTimeOffset.UtcNow + " " + DateTimeOffset.FromUnixTimeSeconds((long)tokens.ExpireDate_Deezer.Value));
-                await DeezerRefresh();
+               if(!await DeezerRefresh())
+                {
+                    Console.WriteLine("something went wrong. couldnt update the tooken.");
+                }
             }
             else if(tokens.ExpireDate_Deezer.HasValue == false)
             {
                 await DeezerRefresh();
             }
         }
-        
+        */
     }
 
     private async Task LoadTokenJson()
@@ -56,7 +66,7 @@ public class Refresher()
         string fileName = "Token.json";
         string filePath = Path.Combine(AppContext.BaseDirectory, fileName);
         string json = JsonSerializer.Serialize(tokens);
-        File.WriteAllText(filePath, json);
+        await File.WriteAllTextAsync(filePath, json);
     }
 
     private async Task<bool> DeezerRefresh()
@@ -82,11 +92,13 @@ public class Refresher()
             await acceptBtn.ClickAsync();
             Console.WriteLine("cookies accepted");
 
+            //handle email and pass
             Console.WriteLine("email and password being typed");
             await page.GetByLabel("email").FillAsync("kisacikdevran0@gmail.com");
             await page.GetByTestId("password-field").FillAsync("devran20092009");
             Console.WriteLine("finished typing");
 
+            //handle the fuckass huminity thing
             await page.GetByTestId("login-button").ClickAsync();
             Console.WriteLine("login button clicked waiting 35s to very humanity");
             await page.WaitForTimeoutAsync(35000);
@@ -110,6 +122,11 @@ public class Refresher()
                 tokens.Token_Deezer = c.Value;
                 tokens.ExpireDate_Deezer = c.Expires;
                 await SaveTokenJson();
+                string json = File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "AppSettings.json"));
+                using var doc = JsonDocument.Parse(json);
+                string path = doc.RootElement.GetProperty("OctoAppsettingPath").GetString();
+                JsonNode node = JsonNode.Parse(path);
+                node["Arl"] = c.Value;
                 return true;
                 
             }
